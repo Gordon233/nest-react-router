@@ -1,0 +1,53 @@
+sync:
+  main:
+    alpha: "developer@72.60.42.205:/home/developer/projects/nest-react-router"
+    beta: "/Users/gordon/Code/nest-react-router"
+    mode: "two-way-resolved"
+    ignore:
+      paths:
+        - "node_modules/"
+        - "*.log"
+        - ".DS_Store"
+        - "dist/"
+        - "build/"
+        - ".env.local"
+        - ".bundle"
+        - "**/__pycache__/"
+        - "__tests__"
+        - "*.pyc"
+        - "**/*.tmp"
+        - "vendor/"
+        - "storage/"
+        - "ios/"
+        - "android/"
+      vcs: "true"  # 使用 "true" 来忽略 VCS 目录，"false" 来同步 VCS 目录
+    watch:
+      mode: "portable"
+    compression:
+      algorithm: "deflate"
+
+beforeCreate:
+  - "echo 'Starting sync setup...'"
+afterCreate:
+  - "echo 'Sync is ready!'"
+beforeTerminate:
+  - "echo 'Stopping sync...'"
+
+commands:
+  status: "mutagen sync list"
+  logs: "mutagen sync monitor"
+
+# # 在项目根目录（包含 mutagen.yml 的目录）运行：
+# mutagen project start
+
+# # 查看项目状态
+# mutagen project list
+
+# # 暂停项目
+# mutagen project pause
+
+# # 恢复项目
+# mutagen project resume
+
+# # 停止并清理项目
+# mutagen project terminate

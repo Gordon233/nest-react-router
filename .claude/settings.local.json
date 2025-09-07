@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat:*)",
+      "Bash(sudo ufw:*)",
+      "Bash(ss:*)",
+      "Bash(curl:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(pnpm run lint:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "Explanatory"
+}
