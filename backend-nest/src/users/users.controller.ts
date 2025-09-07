@@ -140,7 +140,7 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<User> {
     if (req.user.userId !== id) {
-      throw new ForbiddenException('You can only deactivate your own account');
+      throw new ForbiddenException('You can only activate your own account');
     }
 
     const user = await User.findByPk(id);

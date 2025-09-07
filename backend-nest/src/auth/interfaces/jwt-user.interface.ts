@@ -1,3 +1,5 @@
+import { Request } from 'express';
+
 export interface JwtUser {
   userId: number;
   email: string;
