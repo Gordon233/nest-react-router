@@ -49,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 }
 
+// 把这个隐藏的调用链展示清楚
 // 用户请求 /auth/me
 //     ↓
 // @UseGuards(JwtAuthGuard)  // 你看得见的部分
@@ -68,3 +69,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 // 返回值注入到req.user
 //     ↓
 // 你的controller方法执行
+
+// 完整的时序
+// 应用启动
+//   ↓
+// NestJS扫描AuthModule的providers
+//   ↓
+// 发现JwtStrategy，创建实例
+//   ↓
+// 调用new JwtStrategy(usersService)
+//   ↓
+// 构造函数中的super()执行
+//   ↓
+// Passport注册了一个名为'jwt'的策略
+//   ↓
+// 应用启动完成，等待请求
+//   ↓
+// 请求到达 @UseGuards(JwtAuthGuard)
+//   ↓
+// JwtAuthGuard调用AuthGuard('jwt')
+//   ↓
+// Passport查找名为'jwt'的策略
+//   ↓
+// 找到了！使用JwtStrategy验证
