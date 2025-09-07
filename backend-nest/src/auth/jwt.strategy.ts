@@ -15,6 +15,7 @@ interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private usersService: UsersService) {
+    console.log('JwtStrategy 被创建了！');
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {
@@ -30,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    console.log('JwtStrategy.validate 被调用了！', payload);
     // payload是JWT解码后的内容
     // 这里可以加载更多用户信息，或者只返回基本信息
     const user = await this.usersService.findById(payload.sub);
@@ -46,3 +48,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
+
+// 用户请求 /auth/me
+//     ↓
+// @UseGuards(JwtAuthGuard)  // 你看得见的部分
+//     ↓
+// AuthGuard('jwt')          // 父类处理
+//     ↓
+// Passport寻找名为'jwt'的策略  // 隐藏的部分开始
+//     ↓
+// 找到JwtStrategy（因为继承自PassportStrategy）
+//     ↓
+// 调用JwtStrategy的配置（从cookie提取token）
+//     ↓
+// 验证token有效性
+//     ↓
+// 调用JwtStrategy.validate()
+//     ↓
+// 返回值注入到req.user
+//     ↓
+// 你的controller方法执行
