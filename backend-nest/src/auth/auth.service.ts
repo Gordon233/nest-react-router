@@ -1,7 +1,7 @@
+// backend-nest/src/auth/auth.service.ts
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { User } from '../users/user.model';
 
 @Injectable()
 export class AuthService {
@@ -11,9 +11,9 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await User.findByEmailWithPassword(email);
+    // 通过 service 调用，保持一致性
+    const user = await this.usersService.findByEmailWithPassword(email);
     if (user && (await user.verifyPassword(password))) {
-      // 返回用户信息（不包含密码）
       const { password: _, ...result } = user.toJSON();
       return result;
     }
@@ -21,7 +21,6 @@ export class AuthService {
   }
 
   async login(user: any) {
-    // 创建JWT payload
     const payload = {
       email: user.email,
       sub: user.id,

@@ -39,7 +39,7 @@ export class UsersController {
 
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    const user = await User.findByPk(id);
+    const user = await this.usersService.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }

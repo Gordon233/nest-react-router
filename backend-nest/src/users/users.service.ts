@@ -22,6 +22,10 @@ export class UsersService {
     return User.findByPk(id);
   }
 
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return User.findByEmailWithPassword(email);
+  }
+
   // 登录逻辑
   async login(loginDto: LoginDto): Promise<{
     message: string;
