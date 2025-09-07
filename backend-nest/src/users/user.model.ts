@@ -11,7 +11,7 @@ import {
 } from 'sequelize-typescript';
 import * as bcrypt from 'bcrypt';
 
-interface UserJSON {
+export interface UserJSON {
   id: number;
   firstName: string;
   lastName: string;
@@ -21,7 +21,7 @@ interface UserJSON {
   gender?: 'male' | 'female' | 'other';
   createdAt: Date;
   updatedAt: Date;
-  password?: string; // 可选，因为我们会删除它
+  password?: string;
 }
 
 // 默认不返回密码
@@ -138,7 +138,7 @@ export class User extends Model {
     return this.findAll({ where: { isActive: true } });
   }
 
-  toJSON(): Record<string, any> {
+  toJSON(): Omit<UserJSON, 'password'> {
     const values = super.toJSON<UserJSON>();
     delete values.password;
     return values;
