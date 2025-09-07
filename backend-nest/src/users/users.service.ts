@@ -3,12 +3,13 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from './user.model';
 import { Sequelize } from 'sequelize-typescript';
-import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -26,28 +27,14 @@ export class UsersService {
     return User.findByEmailWithPassword(email);
   }
 
-  // 登录逻辑
-  async login(loginDto: LoginDto): Promise<{
-    message: string;
-    user: User;
-  }> {
-    const user = await this.userModel.findByEmailWithPassword(loginDto.email);
-    if (!user) {
-      throw new BadRequestException('Invalid credentials');
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const existingUser = await User.findByEmail(createUserDto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
     }
 
-    // 使用模型的方法验证密码
-    const isPasswordValid = await user.verifyPassword(loginDto.password);
-    if (!isPasswordValid) {
-      throw new BadRequestException('Invalid credentials');
-    }
-
-    // 返回不包含密码的用户对象
-    const userWithoutPassword = await User.findByPk(user.id);
-    return {
-      message: 'Login successful',
-      user: userWithoutPassword!,
-    };
+    const user = await User.create({ ...createUserDto });
+    return User.findByPk(user.id) as Promise<User>;
   }
 
   // 修改密码逻辑

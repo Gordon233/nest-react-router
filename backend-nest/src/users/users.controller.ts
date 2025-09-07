@@ -19,7 +19,6 @@ import { User } from './user.model';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
 
@@ -126,15 +125,5 @@ export class UsersController {
   ): Promise<{ message: string }> {
     // 使用服务层处理复杂逻辑
     return this.usersService.changePassword(id, changePasswordDto);
-  }
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  async login(@Body(ValidationPipe) loginDto: LoginDto): Promise<{
-    message: string;
-    user: User;
-  }> {
-    // 使用服务层处理认证逻辑
-    return this.usersService.login(loginDto);
   }
 }
