@@ -15,6 +15,8 @@ import {
   ParseIntPipe,
   ValidationPipe,
   UseGuards,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { User } from './user.model';
 import { UsersService } from './users.service';
@@ -23,6 +25,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { Request } from 'express';
+import type { AuthRequest } from '../auth/interfaces/jwt-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -79,9 +83,14 @@ export class UsersController {
 
   @Patch(':id')
   async update(
+    @Req() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) updateUserDto: UpdateUserDto,
   ): Promise<User> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException('You can only update your own profile');
+    }
+
     const user = await User.findByPk(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -93,7 +102,14 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async remove(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException('You can only delete your own account');
+    }
+
     const user = await User.findByPk(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -102,7 +118,14 @@ export class UsersController {
   }
 
   @Post(':id/deactivate')
-  async deactivate(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async deactivate(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<User> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException('You can only deactivate your own account');
+    }
+
     const user = await User.findByPk(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -112,7 +135,14 @@ export class UsersController {
   }
 
   @Post(':id/activate')
-  async activate(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async activate(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<User> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException('You can only deactivate your own account');
+    }
+
     const user = await User.findByPk(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -123,9 +153,13 @@ export class UsersController {
 
   @Post(':id/change-password')
   async changePassword(
+    @Req() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) changePasswordDto: ChangePasswordDto,
   ): Promise<{ message: string }> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException('You can only change your own password');
+    }
     // 使用服务层处理复杂逻辑
     return this.usersService.changePassword(id, changePasswordDto);
   }
