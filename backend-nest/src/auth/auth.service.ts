@@ -31,6 +31,7 @@ export class AuthService {
       sub: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
+      version: user.tokenVersion || 1,
     };
 
     return {

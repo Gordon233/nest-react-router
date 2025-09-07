@@ -10,6 +10,7 @@ interface JwtPayload {
   email: string;
   firstName: string;
   lastName: string;
+  version: number;
 }
 
 @Injectable()
@@ -32,12 +33,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    console.log('JwtStrategy.validate 被调用了！', payload);
     // payload是JWT解码后的内容
     // 这里可以加载更多用户信息，或者只返回基本信息
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
       throw new UnauthorizedException();
+    }
+
+    // 关键检查：版本号必须匹配
+    if (!payload.version || user.tokenVersion !== payload.version) {
+      throw new UnauthorizedException('Token has been invalidated');
     }
 
     // 返回的内容会被注入到 request.user

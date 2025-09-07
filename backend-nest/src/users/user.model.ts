@@ -1,4 +1,3 @@
-// src/users/user.model.ts
 import {
   Column,
   Model,
@@ -19,6 +18,7 @@ export interface UserJSON {
   isActive: boolean;
   phone?: string;
   gender?: 'male' | 'female' | 'other';
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
   password?: string;
@@ -84,6 +84,13 @@ export class User extends Model {
   })
   declare gender?: 'male' | 'female' | 'other';
 
+  @Column({
+    type: DataType.INTEGER,
+    defaultValue: 1,
+    allowNull: false,
+  })
+  declare tokenVersion: number;
+
   // Hooks
   @BeforeCreate
   @BeforeUpdate
@@ -122,6 +129,12 @@ export class User extends Model {
 
   async changePassword(newPassword: string): Promise<void> {
     this.password = newPassword;
+    this.tokenVersion += 1; // 关键：改密码时增加版本
+    await this.save();
+  }
+
+  async invalidateAllTokens(): Promise<void> {
+    this.tokenVersion += 1;
     await this.save();
   }
 

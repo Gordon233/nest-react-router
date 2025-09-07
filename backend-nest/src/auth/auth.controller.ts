@@ -19,6 +19,7 @@ import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { jwtConstants } from './constants';
 import { User } from '../users/user.model';
+import type { AuthRequest } from './interfaces/jwt-user.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -89,5 +90,21 @@ export class AuthController {
   @Get('me')
   getProfile(@Req() req: Request) {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all-devices')
+  @HttpCode(HttpStatus.OK)
+  async logoutAllDevices(@Req() req: AuthRequest, @Res() res: Response) {
+    const userId = req.user.userId;
+    const user = await this.usersService.findById(userId);
+
+    if (user) {
+      await user.invalidateAllTokens();
+    }
+
+    // 清除当前设备的 cookie
+    res.clearCookie(jwtConstants.cookieName);
+    res.json({ message: 'Logged out from all devices' });
   }
 }
