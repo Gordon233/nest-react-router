@@ -18,6 +18,10 @@ export class UsersService {
     private sequelize: Sequelize,
   ) {}
 
+  async findById(id: number): Promise<User | null> {
+    return User.findByPk(id);
+  }
+
   // 登录逻辑
   async login(loginDto: LoginDto): Promise<{
     message: string;
