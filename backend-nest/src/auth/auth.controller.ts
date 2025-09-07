@@ -47,7 +47,10 @@ export class AuthController {
       loginResult.access_token,
       jwtConstants.cookieOptions,
     );
-    res.json({ user: loginResult.user });
+    res.json({
+      user: loginResult.user,
+      access_token: loginResult.access_token, // Mobile need
+    });
   }
 
   @Post('login')
@@ -69,7 +72,10 @@ export class AuthController {
       loginResult.access_token,
       jwtConstants.cookieOptions,
     );
-    res.json({ user: loginResult.user });
+    res.json({
+      user: loginResult.user,
+      access_token: loginResult.access_token, // Mobile need
+    });
   }
 
   @Post('logout')
