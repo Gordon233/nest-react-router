@@ -11,24 +11,45 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
-  @ApiProperty()
+  @ApiProperty({
+    example: 'John',
+    description: '名字',
+    minLength: 1,
+    maxLength: 100
+  })
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   firstName: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 'Doe',
+    description: '姓氏',
+    minLength: 1,
+    maxLength: 100
+  })
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   lastName: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 'john@example.com',
+    description: '用户邮箱',
+    format: 'email',
+    maxLength: 255
+  })
   @IsEmail()
   @MaxLength(255)
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 'Pass123!',
+    description: '密码必须包含大小写字母和数字/特殊字符',
+    minLength: 8,
+    maxLength: 100,
+    pattern: '((?=.*\\d)|(?=.*\\W+))(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*'
+  })
   @IsString()
   @MinLength(8)
   @MaxLength(100)
@@ -38,13 +59,21 @@ export class CreateUserDto {
   })
   password: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    example: '+1234567890',
+    description: '手机号码',
+    maxLength: 20
+  })
   @IsOptional()
   @IsString()
   @MaxLength(20)
   phone?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    example: 'male',
+    description: '性别',
+    enum: ['male', 'female', 'other']
+  })
   @IsOptional()
   @IsEnum(['male', 'female', 'other'])
   gender?: 'male' | 'female' | 'other';
