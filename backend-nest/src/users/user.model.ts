@@ -18,10 +18,12 @@ export interface UserJSON {
   isActive: boolean;
   phone?: string;
   gender?: 'male' | 'female' | 'other';
+  password?: string;
   tokenVersion: number;
+  googleId?: string;
+  provider: 'local' | 'google' | 'both';
   createdAt: Date;
   updatedAt: Date;
-  password?: string;
 }
 
 // 默认不返回密码
@@ -62,9 +64,22 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
-    allowNull: false,
+    allowNull: true, // Google 用户可能没有
+    unique: true,
   })
-  declare password: string;
+  declare googleId?: string;
+
+  @Column({
+    type: DataType.ENUM('local', 'google', 'both'),
+    defaultValue: 'local',
+  })
+  declare provider: 'local' | 'google' | 'both';
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true, // 改为可选！Google用户没密码
+  })
+  declare password?: string; // 注意改成可选
 
   @Column({
     type: DataType.BOOLEAN,
@@ -95,22 +110,27 @@ export class User extends Model {
   @BeforeCreate
   @BeforeUpdate
   static async hashPassword(instance: User) {
-    if (instance.changed('password')) {
+    // 先检查 password 是否存在且被修改了
+    if (instance.password && instance.changed('password')) {
       const salt = await bcrypt.genSalt(10);
       instance.password = await bcrypt.hash(instance.password, salt);
     }
   }
 
   async verifyPassword(password: string): Promise<boolean> {
-    // 修复：直接使用当前实例的密码（如果有）或重新查询
-    if (this.password) {
-      return bcrypt.compare(password, this.password);
+    // 如果这个用户没有密码（Google用户），直接返回 false
+    if (!this.password) {
+      // 先尝试从当前实例
+      const userWithPassword = await User.scope('withPassword').findByPk(
+        this.id,
+      );
+      if (!userWithPassword?.password) {
+        return false; // Google 用户没有密码
+      }
+      return bcrypt.compare(password, userWithPassword.password);
     }
 
-    // 如果当前实例没有密码字段，重新查询
-    const userWithPassword = await User.scope('withPassword').findByPk(this.id);
-    if (!userWithPassword) return false;
-    return bcrypt.compare(password, userWithPassword.password);
+    return bcrypt.compare(password, this.password);
   }
 
   async deactivate(): Promise<void> {
@@ -128,8 +148,13 @@ export class User extends Model {
   }
 
   async changePassword(newPassword: string): Promise<void> {
+    // Google 用户第一次设置密码时，provider 要改
+    if (!this.password && this.provider === 'google') {
+      this.provider = 'both';
+    }
+
     this.password = newPassword;
-    this.tokenVersion += 1; // 关键：改密码时增加版本
+    this.tokenVersion += 1;
     await this.save();
   }
 

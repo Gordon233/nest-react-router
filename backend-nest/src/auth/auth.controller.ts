@@ -20,12 +20,15 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { jwtConstants } from './constants';
 import { User } from '../users/user.model';
 import type { AuthRequest } from './interfaces/jwt-user.interface';
+import { GoogleAuthService } from './google-auth.service';
+import { GoogleLoginDto } from './dto/google-login.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    private googleAuthService: GoogleAuthService,
   ) {}
 
   @Post('register')
@@ -106,5 +109,35 @@ export class AuthController {
     // 清除当前设备的 cookie
     res.clearCookie(jwtConstants.cookieName);
     res.json({ message: 'Logged out from all devices' });
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async googleLogin(
+    @Body() googleLoginDto: GoogleLoginDto,
+    @Res() res: Response,
+  ) {
+    // 1. 验证 Google token
+    const googleData = await this.googleAuthService.verifyIdToken(
+      googleLoginDto.idToken,
+    );
+
+    // 2. 查找或创建用户
+    const user = await this.googleAuthService.handleGoogleUser(googleData);
+
+    // 3. 生成我们自己的 JWT
+    const loginResult = this.authService.login(user.toJSON());
+
+    // 4. 设置 cookie（Web用）并返回 token（Mobile用）
+    res.cookie(
+      jwtConstants.cookieName,
+      loginResult.access_token,
+      jwtConstants.cookieOptions,
+    );
+
+    res.json({
+      user: loginResult.user,
+      access_token: loginResult.access_token,
+    });
   }
 }
