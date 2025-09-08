@@ -8,22 +8,27 @@ import {
   MaxLength,
   Matches,
 } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
+  @ApiProperty()
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   firstName: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   lastName: string;
 
+  @ApiProperty()
   @IsEmail()
   @MaxLength(255)
   email: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(8)
   @MaxLength(100)
@@ -33,11 +38,13 @@ export class CreateUserDto {
   })
   password: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(20)
   phone?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsEnum(['male', 'female', 'other'])
   gender?: 'male' | 'female' | 'other';
