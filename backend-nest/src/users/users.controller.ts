@@ -18,6 +18,7 @@ import {
   Req,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiOkResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { User } from './user.model';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -27,13 +28,18 @@ import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { Request } from 'express';
 import type { AuthRequest } from '../auth/interfaces/jwt-user.interface';
+import { UserResponseDto } from './dto/user-response.dto';
 
+@ApiTags('Users')
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @ApiOperation({ summary: '获取所有用户' })
+  @ApiOkResponse({ type: [UserResponseDto] })
   async findAll(): Promise<User[]> {
     return User.findAll();
   }
@@ -44,6 +50,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: '获取单个用户' })
+  @ApiOkResponse({ type: UserResponseDto })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
     const user = await this.usersService.findById(id);
     if (!user) {
@@ -53,6 +61,8 @@ export class UsersController {
   }
 
   @Post()
+  @ApiOperation({ summary: '创建用户' })
+  @ApiOkResponse({ type: UserResponseDto })
   async create(
     @Body(ValidationPipe) createUserDto: CreateUserDto,
   ): Promise<User> {
@@ -82,6 +92,8 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: '更新用户' })
+  @ApiOkResponse({ type: UserResponseDto })
   async update(
     @Req() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,

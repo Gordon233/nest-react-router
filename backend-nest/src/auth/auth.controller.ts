@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ConflictException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiOkResponse, ApiBearerAuth } from '@nestjs/swagger';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -22,7 +23,11 @@ import { User } from '../users/user.model';
 import type { AuthRequest } from './interfaces/jwt-user.interface';
 import { GoogleAuthService } from './google-auth.service';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { LoginResponseDto, RegisterResponseDto } from './dto/auth-response.dto';
+import { UserResponseDto } from '../users/dto/user-response.dto';
+import { ErrorResponseDto } from '../common/dto/error-response.dto';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -32,6 +37,8 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiOperation({ summary: '用户注册' })
+  @ApiOkResponse({ type: RegisterResponseDto })
   async register(@Body() createUserDto: CreateUserDto, @Res() res: Response) {
     // 查找是否已存在该邮箱的用户（需要包含password字段来判断）
     const existingUser = await User.scope('withPassword').findOne({
@@ -95,6 +102,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '用户登录' })
+  @ApiOkResponse({ type: LoginResponseDto })
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     const user = await this.authService.validateUser(
       loginDto.email,
@@ -120,6 +129,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '登出' })
   logout(@Res() res: Response) {
     res.clearCookie(jwtConstants.cookieName);
     res.json({ message: 'Logged out successfully' });
@@ -127,6 +137,9 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @ApiOperation({ summary: '获取当前用户信息' })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiBearerAuth('JWT-auth')
   getProfile(@Req() req: Request) {
     return req.user;
   }
@@ -134,6 +147,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout-all-devices')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '所有设备登出' })
+  @ApiBearerAuth('JWT-auth')
   async logoutAllDevices(@Req() req: AuthRequest, @Res() res: Response) {
     const userId = req.user.userId;
     const user = await this.usersService.findById(userId);
@@ -149,6 +164,8 @@ export class AuthController {
 
   @Post('google')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Google登录' })
+  @ApiOkResponse({ type: LoginResponseDto })
   async googleLogin(
     @Body() googleLoginDto: GoogleLoginDto,
     @Res() res: Response,
