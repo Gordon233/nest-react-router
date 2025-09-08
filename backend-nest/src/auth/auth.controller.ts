@@ -44,14 +44,6 @@ export class AuthController {
         throw new ConflictException('Email already registered with password');
       }
 
-      // 情况2: Google用户想设置密码
-      // 验证其他必填字段是否匹配（可选，看你的业务需求）
-      if (existingUser.email !== createUserDto.email) {
-        throw new ConflictException(
-          'An account with this email exists. Please login with Google first, then set a password in your profile.',
-        );
-      }
-
       // 允许Google用户设置密码
       existingUser.password = createUserDto.password; // 会自动触发 @BeforeUpdate hook 加密
       existingUser.provider = 'both';

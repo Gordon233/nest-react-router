@@ -13,7 +13,7 @@ export class GoogleAuthService {
     private configService: ConfigService,
   ) {
     this.client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
+      this.configService.get<string>('GOOGLE_CLIENT_ID'),
       // Client Secret 在只验证 idToken 时其实不需要
     );
   }
