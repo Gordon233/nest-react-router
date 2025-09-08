@@ -41,29 +41,42 @@ export class UsersService {
   async changePassword(
     userId: number,
     changePasswordDto: ChangePasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: string; requiresCurrentPassword?: boolean }> {
     const user = await User.scope('withPassword').findByPk(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // 如果用户有密码，验证当前密码
-    if (user.password) {
+    const hasPassword = !!user.password;
+
+    if (hasPassword) {
+      if (!changePasswordDto.currentPassword) {
+        // 返回一个特殊的错误，告诉前端需要当前密码
+        throw new BadRequestException({
+          message: 'Current password is required',
+          requiresCurrentPassword: true,
+          statusCode: 400,
+        });
+      }
+
       const isValid = await user.verifyPassword(
         changePasswordDto.currentPassword,
       );
       if (!isValid) {
         throw new BadRequestException('Current password is incorrect');
       }
-    }
-    // 如果是 Google 用户（没密码），允许直接设置新密码
-    else {
-      // 更新 provider 为 'both'
+    } else {
       user.provider = 'both';
     }
 
     await user.changePassword(changePasswordDto.newPassword);
-    return { message: 'Password changed successfully' };
+
+    return {
+      message: hasPassword
+        ? 'Password changed successfully'
+        : 'Password set successfully',
+      requiresCurrentPassword: hasPassword,
+    };
   }
 
   // 批量操作

@@ -16,7 +16,6 @@ interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private usersService: UsersService) {
-    console.log('JwtStrategy 被创建了！');
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {

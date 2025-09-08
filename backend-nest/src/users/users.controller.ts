@@ -163,4 +163,26 @@ export class UsersController {
     // 使用服务层处理复杂逻辑
     return this.usersService.changePassword(id, changePasswordDto);
   }
+
+  @Get(':id/password-status')
+  async getPasswordStatus(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ hasPassword: boolean; provider: string }> {
+    if (req.user.userId !== id) {
+      throw new ForbiddenException(
+        'You can only check your own password status',
+      );
+    }
+
+    const user = await User.scope('withPassword').findByPk(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return {
+      hasPassword: !!user.password,
+      provider: user.provider,
+    };
+  }
 }
