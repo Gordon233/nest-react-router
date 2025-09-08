@@ -2,12 +2,16 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/user.model';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class GoogleAuthService {
   private client: OAuth2Client;
 
-  constructor(private usersService: UsersService) {
+  constructor(
+    private usersService: UsersService,
+    private configService: ConfigService,
+  ) {
     this.client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       // Client Secret 在只验证 idToken 时其实不需要
@@ -18,7 +22,7 @@ export class GoogleAuthService {
     try {
       const ticket = await this.client.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
       });
 
       const payload = ticket.getPayload();
@@ -45,29 +49,32 @@ export class GoogleAuthService {
     firstName: string;
     lastName: string;
   }): Promise<User> {
-    // 先按 email 查找用户
-    let user = await User.findByEmail(googleData.email);
+    // 重要：使用 withPassword scope 来获取完整用户信息，以便正确判断 provider
+    let user = await User.scope('withPassword').findOne({
+      where: { email: googleData.email },
+    });
 
     if (user) {
-      // 用户存在 - 更新 Google 信息
+      // 用户存在 - 检查是否需要更新 Google 信息
       if (!user.googleId) {
         user.googleId = googleData.googleId;
+        // 现在能正确判断了，因为我们用了 withPassword scope
         user.provider = user.password ? 'both' : 'google';
         await user.save();
       }
     } else {
-      // 新用户 - 创建
+      // 新用户 - 创建 Google 账号
       user = await User.create({
         email: googleData.email,
         googleId: googleData.googleId,
         firstName: googleData.firstName,
         lastName: googleData.lastName,
         provider: 'google',
-        // 注意：没有密码！
-        // 但 Sequelize 可能要求 password 字段，所以需要改 Model
+        // 注意：没有密码
       });
     }
 
-    return user;
+    // 返回时使用默认 scope（不包含密码）
+    return User.findByPk(user.id) as Promise<User>;
   }
 }

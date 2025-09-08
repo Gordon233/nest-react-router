@@ -47,12 +47,19 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // 使用模型的方法验证密码
-    const isValid = await user.verifyPassword(
-      changePasswordDto.currentPassword,
-    );
-    if (!isValid) {
-      throw new BadRequestException('Current password is incorrect');
+    // 如果用户有密码，验证当前密码
+    if (user.password) {
+      const isValid = await user.verifyPassword(
+        changePasswordDto.currentPassword,
+      );
+      if (!isValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+    }
+    // 如果是 Google 用户（没密码），允许直接设置新密码
+    else {
+      // 更新 provider 为 'both'
+      user.provider = 'both';
     }
 
     await user.changePassword(changePasswordDto.newPassword);

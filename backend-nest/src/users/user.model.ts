@@ -118,18 +118,23 @@ export class User extends Model {
   }
 
   async verifyPassword(password: string): Promise<boolean> {
-    // 如果这个用户没有密码（Google用户），直接返回 false
+    // 如果当前实例没有password字段（因为默认scope排除了）
     if (!this.password) {
-      // 先尝试从当前实例
+      // 用 withPassword scope 重新查询
       const userWithPassword = await User.scope('withPassword').findByPk(
         this.id,
       );
+
+      // 如果数据库里确实没有密码（Google用户），返回false
       if (!userWithPassword?.password) {
-        return false; // Google 用户没有密码
+        return false;
       }
+
+      // 有密码，验证它
       return bcrypt.compare(password, userWithPassword.password);
     }
 
+    // 当前实例有password字段，直接验证
     return bcrypt.compare(password, this.password);
   }
 
