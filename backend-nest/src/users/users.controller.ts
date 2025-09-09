@@ -40,8 +40,18 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: '获取所有用户' })
   @ApiOkResponse({ type: [UserResponseDto] })
-  async findAll(): Promise<User[]> {
-    return User.findAll();
+  async findAll(@Req() req: AuthRequest): Promise<User[]> {
+    console.log('[USERS CONTROLLER DEBUG] GET /users request received');
+    console.log('[USERS CONTROLLER DEBUG] Authenticated user:', {
+      userId: req.user?.userId,
+      email: req.user?.email
+    });
+    console.log('[USERS CONTROLLER DEBUG] Request cookies:', req.cookies);
+    console.log('[USERS CONTROLLER DEBUG] Request headers origin:', req.headers.origin);
+    
+    const users = await User.findAll();
+    console.log('[USERS CONTROLLER DEBUG] Found users count:', users.length);
+    return users;
   }
 
   @Get('active')

@@ -8,14 +8,21 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 
 // loader 在组件渲染前获取数据
 export async function loader({ request }: Route.LoaderArgs) {
+  console.log("[USERS DEBUG] Users loader called, request URL:", request.url);
+  
   try {
+    console.log("[USERS DEBUG] Making API request to /users");
     const users = await api.request<UserResponse[]>("/users");
+    console.log("[USERS DEBUG] Users API response success, users count:", users?.length);
     return { users };
   } catch (error) {
+    console.log("[USERS DEBUG] Users API error:", error);
     if (error instanceof ApiError && error.status === 401) {
+      console.log("[USERS DEBUG] 401 Unauthorized - redirecting to login");
       // 未登录，跳转到登录页
       throw redirect("/login");
     }
+    console.log("[USERS DEBUG] Non-401 error, throwing to ErrorBoundary:", error);
     throw error; // 其他错误会被 ErrorBoundary 捕获
   }
 }

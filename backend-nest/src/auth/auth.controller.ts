@@ -105,22 +105,44 @@ export class AuthController {
   @ApiOperation({ summary: '用户登录' })
   @ApiOkResponse({ type: LoginResponseDto })
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    console.log('[AUTH CONTROLLER DEBUG] Login request received:', { 
+      email: loginDto.email,
+      origin: res.req.headers.origin,
+      userAgent: res.req.headers['user-agent']
+    });
+
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.password,
     );
 
     if (!user) {
+      console.log('[AUTH CONTROLLER DEBUG] Login validation failed for:', loginDto.email);
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
+    console.log('[AUTH CONTROLLER DEBUG] User validated successfully:', { 
+      userId: user.id, 
+      email: user.email 
+    });
+
     const loginResult = this.authService.login(user);
+    
+    console.log('[AUTH CONTROLLER DEBUG] Setting cookie with options:', {
+      cookieName: jwtConstants.cookieName,
+      cookieOptions: jwtConstants.cookieOptions,
+      tokenLength: loginResult.access_token.length
+    });
+    
     res.cookie(
       jwtConstants.cookieName,
       loginResult.access_token,
       jwtConstants.cookieOptions,
     );
+    
+    console.log('[AUTH CONTROLLER DEBUG] Login response sent with cookie set');
+    
     res.json({
       user: loginResult.user,
       access_token: loginResult.access_token, // Mobile need

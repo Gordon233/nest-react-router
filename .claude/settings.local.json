@@ -6,10 +6,12 @@
       "Bash(ss:*)",
       "Bash(curl:*)",
       "Bash(docker-compose up:*)",
-      "Bash(pnpm run lint:*)"
+      "Bash(pnpm run lint:*)",
+      "WebSearch",
+      "Read(//etc/**)"
     ],
     "deny": [],
     "ask": []
   },
-  "outputStyle": "Explanatory"
+  "outputStyle": "multi-tech-stack"
 }

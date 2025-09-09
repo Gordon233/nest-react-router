@@ -18,14 +18,25 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<UserWithoutPassword | null> {
+    console.log('[AUTH SERVICE DEBUG] Validating user:', { email });
+    
     const user = await this.usersService.findByEmailWithPassword(email);
+    console.log('[AUTH SERVICE DEBUG] User found:', !!user);
+    
     if (user && (await user.verifyPassword(password))) {
+      console.log('[AUTH SERVICE DEBUG] Password validation success for user:', user.email);
       return user.toJSON();
     }
+    console.log('[AUTH SERVICE DEBUG] Password validation failed or user not found');
     return null;
   }
 
   login(user: UserWithoutPassword) {
+    console.log('[AUTH SERVICE DEBUG] Creating JWT token for user:', { 
+      email: user.email, 
+      id: user.id 
+    });
+    
     const payload = {
       email: user.email,
       sub: user.id,
@@ -34,8 +45,13 @@ export class AuthService {
       version: user.tokenVersion || 1,
     };
 
+    console.log('[AUTH SERVICE DEBUG] JWT payload:', payload);
+    
+    const access_token = this.jwtService.sign(payload);
+    console.log('[AUTH SERVICE DEBUG] JWT token generated, length:', access_token.length);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
       user: user,
     };
   }

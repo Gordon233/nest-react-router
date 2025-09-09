@@ -44,9 +44,14 @@ async function bootstrap() {
 
   // CORS 配置（如果需要）
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: 'http://localhost:5173', // 修正前端端口
     credentials: true,
   });
+
+  console.log(
+    '[MAIN DEBUG] CORS configured for origin:',
+    'http://localhost:5173',
+  );
 
   await app.listen(process.env.PORT ?? 3000);
 }

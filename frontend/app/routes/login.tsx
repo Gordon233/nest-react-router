@@ -10,21 +10,30 @@ export async function action({ request }: Route.ActionArgs) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
+  console.log("[LOGIN DEBUG] Starting login action for email:", email);
+
   try {
-    await api.request("/auth/login", {
+    console.log("[LOGIN DEBUG] Making API request to /auth/login");
+    const loginResponse = await api.request("/auth/login", {
       method: "post",
       body: { email, password },
     });
     
+    console.log("[LOGIN DEBUG] Login API response:", loginResponse);
+    console.log("[LOGIN DEBUG] Login successful, redirecting to /users");
+    
     // 登录成功，跳转到首页或用户页
     return redirect("/users");
   } catch (error) {
+    console.log("[LOGIN DEBUG] Login error:", error);
     if (error instanceof ApiError) {
+      console.log("[LOGIN DEBUG] ApiError details - status:", error.status, "data:", error.data);
       return {
         error: error.data?.message || "Invalid credentials",
         email, // 保留用户输入
       };
     }
+    console.log("[LOGIN DEBUG] Unexpected error:", error);
     return {
       error: "An unexpected error occurred",
       email,

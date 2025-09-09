@@ -33,6 +33,10 @@ class ApiClient {
       });
     }
 
+    console.log(`[API DEBUG] Making ${options?.method || 'GET'} request to:`, url.toString());
+    console.log(`[API DEBUG] Request body:`, options?.body);
+    console.log(`[API DEBUG] Credentials included: true`);
+
     const res = await fetch(url.toString(), {
       method: options?.method || 'get',
       credentials: 'include', // 重要：自动发送 cookie
@@ -42,18 +46,25 @@ class ApiClient {
       body: options?.body ? JSON.stringify(options.body) : undefined,
     });
 
+    console.log(`[API DEBUG] Response status:`, res.status, res.statusText);
+    console.log(`[API DEBUG] Response headers:`, Object.fromEntries(res.headers.entries()));
+
     // 处理错误
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
+      console.log(`[API DEBUG] Error response data:`, errorData);
       throw new ApiError(res.status, res.statusText, errorData);
     }
 
     // 204 No Content 不返回数据
     if (res.status === 204) {
+      console.log(`[API DEBUG] 204 No Content response`);
       return undefined as T;
     }
 
-    return res.json();
+    const responseData = await res.json();
+    console.log(`[API DEBUG] Success response data:`, responseData);
+    return responseData;
   }
 }
 

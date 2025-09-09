@@ -22,6 +22,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           const cookies = request?.cookies as
             | Record<string, string>
             | undefined;
+          console.log('[JWT STRATEGY DEBUG] Extracting token from cookies:', {
+            allCookies: cookies,
+            targetCookie: jwtConstants.cookieName,
+            foundToken: !!cookies?.[jwtConstants.cookieName],
+            tokenLength: cookies?.[jwtConstants.cookieName]?.length || 0
+          });
           return cookies?.[jwtConstants.cookieName] || null;
         },
         ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -32,18 +38,37 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    console.log('[JWT STRATEGY DEBUG] Validating JWT payload:', {
+      sub: payload.sub,
+      email: payload.email,
+      version: payload.version
+    });
+    
     // payload是JWT解码后的内容
     // 这里可以加载更多用户信息，或者只返回基本信息
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
+      console.log('[JWT STRATEGY DEBUG] User not found for ID:', payload.sub);
       throw new UnauthorizedException();
     }
 
+    console.log('[JWT STRATEGY DEBUG] User found:', {
+      userId: user.id,
+      email: user.email,
+      tokenVersion: user.tokenVersion
+    });
+
     // 关键检查：版本号必须匹配
     if (!payload.version || user.tokenVersion !== payload.version) {
+      console.log('[JWT STRATEGY DEBUG] Token version mismatch:', {
+        payloadVersion: payload.version,
+        userTokenVersion: user.tokenVersion
+      });
       throw new UnauthorizedException('Token has been invalidated');
     }
 
+    console.log('[JWT STRATEGY DEBUG] JWT validation successful');
+    
     // 返回的内容会被注入到 request.user
     return {
       userId: payload.sub,
