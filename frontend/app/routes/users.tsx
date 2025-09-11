@@ -9,20 +9,49 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 // loader 在组件渲染前获取数据
 export async function loader({ request }: Route.LoaderArgs) {
   console.log("[USERS DEBUG] Users loader called, request URL:", request.url);
+  console.log(`[JWT DEBUG] Users loader started - SSR loading user data`);
+  
+  // Log request details in SSR context
+  console.log(`[JWT DEBUG] Request object:`, {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers.entries()),
+  });
+  
+  // Check for cookie header specifically
+  const cookieHeader = request.headers.get('cookie');
+  console.log(`[JWT DEBUG] Cookie header from request:`, cookieHeader);
+  
+  if (cookieHeader) {
+    console.log(`[JWT DEBUG] Cookies found in SSR request:`, cookieHeader);
+  } else {
+    console.log(`[JWT DEBUG] NO cookies found in SSR request - this is the problem!`);
+  }
   
   try {
     console.log("[USERS DEBUG] Making API request to /users");
-    const users = await api.request<UserResponse[]>("/users");
+    console.log(`[JWT DEBUG] Users loader: About to request /users`);
+    console.log(`[JWT DEBUG] Users loader: Passing request object for cookie forwarding`);
+    
+    // 🔑 关键改动：传递 request 对象以转发 cookies
+    const users = await api.request<UserResponse[]>("/users", {
+      request, // 传递原始请求对象，包含 cookies
+    });
+    
     console.log("[USERS DEBUG] Users API response success, users count:", users?.length);
+    console.log(`[JWT DEBUG] Users loader: Successfully got ${users?.length} users`);
+    console.log(`[JWT DEBUG] Users loader: Cookie forwarding worked! 🎉`);
     return { users };
   } catch (error) {
-    console.log("[USERS DEBUG] Users API error:", error);
     if (error instanceof ApiError && error.status === 401) {
       console.log("[USERS DEBUG] 401 Unauthorized - redirecting to login");
+      console.log(`[JWT DEBUG] Users loader: 401 error, redirecting to /login`);
+      console.log(`[JWT DEBUG] Users loader: Cookie forwarding may have failed ❌`);
       // 未登录，跳转到登录页
       throw redirect("/login");
     }
     console.log("[USERS DEBUG] Non-401 error, throwing to ErrorBoundary:", error);
+    console.log(`[JWT DEBUG] Users loader: Non-401 error, throwing to ErrorBoundary`);
     throw error; // 其他错误会被 ErrorBoundary 捕获
   }
 }
@@ -50,7 +79,9 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Users() {
+  console.log(`[JWT DEBUG] Users component rendering - SSR/Client render`);
   const { users } = useLoaderData<typeof loader>();
+  console.log(`[JWT DEBUG] Users component: Got ${users?.length} users from loader`);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -124,6 +155,7 @@ export default function Users() {
 
 // 错误边界
 export function ErrorBoundary() {
+  console.log(`[JWT DEBUG] Users ErrorBoundary rendered - Error in users route`);
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">

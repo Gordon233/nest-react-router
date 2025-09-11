@@ -6,24 +6,60 @@ import { Input } from "~/components/ui/input";
 
 // action 处理表单提交
 export async function action({ request }: Route.ActionArgs) {
+  console.log(`[JWT DEBUG] Login action started - Request URL: ${request.url}`);
   const formData = await request.formData();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
   console.log("[LOGIN DEBUG] Starting login action for email:", email);
+  console.log(`[JWT DEBUG] Login action: Processing login for email: ${email}`);
 
   try {
     console.log("[LOGIN DEBUG] Making API request to /auth/login");
+    console.log(`[JWT DEBUG] Login action: About to call /auth/login API`);
+    console.log(`[JWT DEBUG] Login action: Passing request object (though login doesn't need auth)`);
+    
+    // 🔑 获取完整响应以提取 cookies
     const loginResponse = await api.request("/auth/login", {
       method: "post",
       body: { email, password },
-    });
+      request, // 传递 request 对象以保持一致性
+      returnFullResponse: true, // 获取完整响应，包含 headers
+    }) as {
+      data: any;
+      headers: Record<string, string>;
+      status: number;
+      statusText: string;
+    };
+    
+    console.log(`[JWT DEBUG] Login action: Got full response with headers`);
+    console.log(`[JWT DEBUG] Login response headers:`, loginResponse.headers);
     
     console.log("[LOGIN DEBUG] Login API response:", loginResponse);
     console.log("[LOGIN DEBUG] Login successful, redirecting to /users");
+    console.log(`[JWT DEBUG] Login action: Login successful, got response:`, loginResponse);
     
-    // 登录成功，跳转到首页或用户页
-    return redirect("/users");
+    // 🔑 提取 set-cookie header
+    const setCookieHeader = loginResponse.headers['set-cookie'];
+    console.log(`[JWT DEBUG] Login action: Extracted set-cookie header:`, setCookieHeader);
+    
+    if (setCookieHeader) {
+      console.log(`[JWT DEBUG] Login action: Found cookies to forward:`, setCookieHeader);
+      console.log(`[JWT DEBUG] Login action: Creating redirect with cookie headers`);
+      
+      // 创建带有 cookie 的重定向响应
+      return redirect("/users", {
+        headers: {
+          "Set-Cookie": setCookieHeader,
+        },
+      });
+    } else {
+      console.log(`[JWT DEBUG] Login action: No cookies found in response, doing normal redirect`);
+      console.log(`[JWT DEBUG] Login action: Redirecting to /users without cookies`);
+      
+      // 没有 cookies 的常规重定向
+      return redirect("/users");
+    }
   } catch (error) {
     console.log("[LOGIN DEBUG] Login error:", error);
     if (error instanceof ApiError) {
@@ -43,7 +79,9 @@ export async function action({ request }: Route.ActionArgs) {
 
 // 页面组件
 export default function Login() {
+  console.log(`[JWT DEBUG] Login component rendering`);
   const actionData = useActionData<typeof action>();
+  console.log(`[JWT DEBUG] Login component: ActionData:`, actionData);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

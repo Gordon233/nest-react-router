@@ -26,6 +26,8 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const isServer = typeof window === 'undefined';
+  console.log(`[JWT DEBUG] Layout component rendered - ${isServer ? 'SERVER (SSR)' : 'CLIENT'} rendering started`);
   return (
     <html lang="en">
       <head>
@@ -50,21 +52,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const isServer = typeof window === 'undefined';
+  console.log(`[JWT DEBUG] App component rendered - ${isServer ? 'SERVER (SSR)' : 'CLIENT'} - Root outlet rendering`);
   return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  console.log(`[JWT DEBUG] ErrorBoundary triggered - Error:`, error);
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
+    console.log(`[JWT DEBUG] ErrorBoundary: RouteError - Status: ${error.status}, StatusText: ${error.statusText}`);
     message = error.status === 404 ? "404" : "Error";
     details =
       error.status === 404
         ? "The requested page could not be found."
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
+    console.log(`[JWT DEBUG] ErrorBoundary: Dev mode error - Message: ${error.message}`);
     details = error.message;
     stack = error.stack;
   }
