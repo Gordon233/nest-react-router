@@ -1,6 +1,6 @@
 import { Form, redirect, useActionData } from "react-router";
 import type { Route } from "./+types/register";
-import { api, ApiError } from "~/lib/api";
+import { api } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { components } from "~/types/api";
@@ -20,27 +20,25 @@ export async function action({ request }: Route.ActionArgs) {
     gender: formData.get("gender") as "male" | "female" | "other" | undefined,
   };
 
-  try {
-    await api.request("/auth/register", {
-      method: "post",
-      body: userData,
-    });
-    
-    // 注册成功，直接登录并跳转
-    return redirect("/users");
-  } catch (error) {
-    if (error instanceof ApiError) {
-      // 处理具体错误（如邮箱已存在）
-      if (error.status === 409) {
-        return { error: "Email already exists", data: userData };
-      }
-      return { 
-        error: error.data?.message || "Registration failed", 
-        data: userData 
-      };
+  const response = await api.request("/auth/register", {
+    method: "post",
+    body: userData,
+    request,
+  });
+
+  if (response.error) {
+    // 处理具体错误（如邮箱已存在）
+    if (response.status === 409) {
+      return { error: "Email already exists", data: userData };
     }
-    return { error: "An unexpected error occurred", data: userData };
+    return {
+      error: response.data?.message || "Registration failed",
+      data: userData
+    };
   }
+
+  // 注册成功，跳转到登录页
+  return redirect("/login");
 }
 
 export default function Register() {

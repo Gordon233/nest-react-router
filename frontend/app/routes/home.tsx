@@ -1,20 +1,21 @@
 import { Link, useLoaderData, redirect } from "react-router";
 import type { Route } from "./+types/home";
-import { api, ApiError } from "~/lib/api";
+import { api } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import type { components } from "~/types/api";
 
 type UserResponse = components["schemas"]["UserResponseDto"];
 
 // 尝试获取当前用户，但不强制登录
-export async function loader() {
-  try {
-    const user = await api.request<UserResponse>("/auth/me");
-    return { user, isAuthenticated: true };
-  } catch (error) {
+export async function loader({ request }: { request: Request }) {
+  const response = await api.request<UserResponse>("/auth/me", { request });
+
+  if (response.error) {
     // 未登录也没关系，显示公开页面
     return { user: null, isAuthenticated: false };
   }
+
+  return { user: response.data, isAuthenticated: true };
 }
 
 export function meta({}: Route.MetaArgs) {

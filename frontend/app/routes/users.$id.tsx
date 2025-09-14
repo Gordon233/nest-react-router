@@ -1,28 +1,29 @@
 import { useLoaderData, Link, Form, redirect } from "react-router";
 import type { Route } from "./+types/users.$id";
-import { api, ApiError } from "~/lib/api";
+import { api } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import type { components } from "~/types/api";
 
 type UserResponse = components["schemas"]["UserResponseDto"];
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ params, request }: Route.LoaderArgs) {
   const userId = params.id;
-  
-  try {
-    const user = await api.request<UserResponse>(`/users/${userId}` as any);
-    return { user };
-  } catch (error) {
-    if (error instanceof ApiError) {
-      if (error.status === 401) {
-        throw redirect("/login");
-      }
-      if (error.status === 404) {
-        throw new Response("User not found", { status: 404 });
-      }
+
+  const response = await api.request<UserResponse>(`/users/${userId}` as any, {
+    request,
+  });
+
+  if (response.error) {
+    if (response.status === 401) {
+      throw redirect("/login");
     }
-    throw error;
+    if (response.status === 404) {
+      throw new Response("User not found", { status: 404 });
+    }
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
+
+  return { user: response.data };
 }
 
 export default function UserDetail() {

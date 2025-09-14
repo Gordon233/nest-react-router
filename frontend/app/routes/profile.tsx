@@ -1,6 +1,6 @@
 import { Form, redirect, useLoaderData, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/profile";
-import { api, ApiError } from "~/lib/api";
+import { api } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { components } from "~/types/api";
@@ -10,50 +10,45 @@ type UpdateUserDto = components["schemas"]["UpdateUserDto"];
 
 // 获取当前用户信息
 export async function loader({ request }: Route.LoaderArgs) {
-  console.log(`[JWT DEBUG] Profile loader started - Request URL: ${request.url}`);
-  
-  // Log request details
-  console.log(`[JWT DEBUG] Profile loader - Request headers:`, Object.fromEntries(request.headers.entries()));
-  const cookieHeader = request.headers.get('cookie');
-  console.log(`[JWT DEBUG] Profile loader - Cookie header:`, cookieHeader);
-  
   try {
-    console.log(`[JWT DEBUG] Profile loader: Requesting /auth/me`);
-    console.log(`[JWT DEBUG] Profile loader: Passing request object for cookie forwarding`);
     
     // 🔑 关键改动：传递 request 对象以转发 cookies
-    const user = await api.request<UserResponse>("/auth/me", {
+    const response = await api.request<UserResponse>("/auth/me", {
       request, // 传递原始请求对象，包含 cookies
     });
-    
-    console.log(`[JWT DEBUG] Profile loader: Successfully got user data`, user);
-    console.log(`[JWT DEBUG] Profile loader: Cookie forwarding worked! 🎉`);
-    return { user };
-  } catch (error) {
-    console.log(`[JWT DEBUG] Profile loader: Error occurred`, error);
-    if (error instanceof ApiError && error.status === 401) {
-      console.log(`[JWT DEBUG] Profile loader: 401 error, redirecting to login`);
-      console.log(`[JWT DEBUG] Profile loader: Cookie forwarding may have failed ❌`);
-      throw redirect("/login");
+
+    if (response.error) {
+      if (response.status === 401) {
+        throw redirect("/login");
+      }
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
+
+    return { user: response.data };
+  } catch (error) {
     throw error;
   }
 }
 
 // 处理更新操作
 export async function action({ request }: Route.ActionArgs) {
-  console.log(`[JWT DEBUG] Profile action started - Request URL: ${request.url}`);
   const formData = await request.formData();
   const intent = formData.get("intent");
-  console.log(`[JWT DEBUG] Profile action: Intent = ${intent}`);
-  
+
   // 获取当前用户信息
-  console.log(`[JWT DEBUG] Profile action: Getting current user via /auth/me`);
-  console.log(`[JWT DEBUG] Profile action: Passing request object for cookie forwarding`);
   
-  const currentUser = await api.request<UserResponse>("/auth/me", {
+  const currentUserResponse = await api.request<UserResponse>("/auth/me", {
     request, // 🔑 传递 request 对象以转发 cookies
   });
+
+  if (currentUserResponse.error) {
+    if (currentUserResponse.status === 401) {
+      throw redirect("/login");
+    }
+    throw new Error(`API Error: ${currentUserResponse.status} ${currentUserResponse.statusText}`);
+  }
+
+  const currentUser = currentUserResponse.data;
   
   if (intent === "update") {
     const updateData: UpdateUserDto = {
@@ -63,40 +58,32 @@ export async function action({ request }: Route.ActionArgs) {
       gender: formData.get("gender") as "male" | "female" | "other" | undefined,
     };
     
-    try {
-      console.log(`[JWT DEBUG] Profile action: Updating user ${currentUser.id}`);
-      await api.request(`/users/${currentUser.id}` as any, {
-        method: "patch",
-        body: updateData,
-        request, // 🔑 传递 request 对象
-      });
-      console.log(`[JWT DEBUG] Profile action: User update successful`);
-      return { success: "Profile updated successfully" };
-    } catch (error) {
-      if (error instanceof ApiError) {
-        return { error: error.data?.message || "Failed to update profile" };
-      }
-      return { error: "An unexpected error occurred" };
+    const updateResponse = await api.request(`/users/${currentUser.id}` as any, {
+      method: "patch",
+      body: updateData,
+      request,
+    });
+
+    if (updateResponse.error) {
+      return { error: updateResponse.data?.message || "Failed to update profile" };
     }
+
+    return { success: "Profile updated successfully" };
   }
   
   if (intent === "logout") {
-    console.log(`[JWT DEBUG] Profile action: Logout intent - calling /auth/logout`);
-    await api.request("/auth/logout", { 
+    await api.request("/auth/logout", {
       method: "post",
-      request, // 🔑 传递 request 对象
+      request,
     });
-    console.log(`[JWT DEBUG] Profile action: Logout successful, redirecting to /login`);
     return redirect("/login");
   }
   
   if (intent === "logout-all") {
-    console.log(`[JWT DEBUG] Profile action: Logout-all intent - calling /auth/logout-all-devices`);
-    await api.request("/auth/logout-all-devices", { 
+    await api.request("/auth/logout-all-devices", {
       method: "post",
-      request, // 🔑 传递 request 对象
+      request,
     });
-    console.log(`[JWT DEBUG] Profile action: Logout-all successful, redirecting to /login`);
     return redirect("/login");
   }
   
@@ -104,12 +91,10 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Profile() {
-  console.log(`[JWT DEBUG] Profile component rendering`);
   const { user } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
-  console.log(`[JWT DEBUG] Profile component: User:`, user, `ActionData:`, actionData, `Navigation state:`, navigation.state);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-2xl">
