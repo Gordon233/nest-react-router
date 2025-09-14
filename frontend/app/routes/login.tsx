@@ -1,6 +1,6 @@
 import { Form, redirect, useActionData } from "react-router";
 import type { Route } from "./+types/login";
-import { api } from "~/lib/api";
+import { api, createFetchOptions, handleApiError } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 
@@ -11,14 +11,17 @@ export async function action({ request }: Route.ActionArgs) {
   const password = formData.get("password") as string;
 
   try {
-    const loginResponse = await api.request("/auth/login", {
-      method: "post",
+    const fetchOptions = createFetchOptions(request);
+    const { data, response } = await api.POST("/auth/login", {
       body: { email, password },
-      request,
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
     });
 
+    console.log('[LOGIN] Login successful', data);
+
     // ✅ 成功：可以访问响应头
-    const setCookieHeader = loginResponse.headers['set-cookie'];
+    const setCookieHeader = response.headers.get('set-cookie');
 
     if (setCookieHeader) {
       return redirect("/users", {
@@ -30,17 +33,21 @@ export async function action({ request }: Route.ActionArgs) {
       return redirect("/users");
     }
   } catch (error) {
-    // ✅ 错误：可以访问完整响应信息
-    if (error instanceof Error && (error as any).response) {
-      const response = (error as any).response;
-      return {
-        error: response.data?.message || "Invalid credentials",
-        email
-      };
-    }
+    try {
+      handleApiError(error, "/auth/login");
+    } catch (apiError) {
+      // ✅ 错误：可以访问完整响应信息
+      if (apiError instanceof Error && (apiError as any).response) {
+        const response = (apiError as any).response;
+        return {
+          error: response.data?.message || "Invalid credentials",
+          email
+        };
+      }
 
-    // 其他类型的错误（如 redirect）重新抛出
-    throw error;
+      // 其他类型的错误（如 redirect）重新抛出
+      throw apiError;
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 import { Link, useLoaderData, Form } from "react-router";
 import type { Route } from "./+types/users";
-import { api } from "~/lib/api";
+import { api, createFetchOptions, handleApiError } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import type { components } from "~/types/api";
 
@@ -8,13 +8,15 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 
 // loader 在组件渲染前获取数据
 export async function loader({ request }: Route.LoaderArgs) {
-  // 🔑 关键改动：传递 request 对象以转发 cookies
-  // 401 会自动重定向到 /login，其他错误会被 ErrorBoundary 处理
-  const response = await api.request<UserResponse[]>("/users", {
-    request, // 传递原始请求对象，包含 cookies
-  });
+  try {
+    const fetchOptions = createFetchOptions(request);
+    const { data } = await api.GET("/users", fetchOptions);
 
-  return { users: response.data };
+    console.log('[USERS] Users loaded successfully', data);
+    return { users: data };
+  } catch (error) {
+    handleApiError(error, "/users");
+  }
 }
 
 // action 处理用户操作（如删除）
@@ -25,15 +27,21 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "delete" && userId) {
     try {
-      await api.request(`/users/${userId}` as any, {
-        method: "delete",
-        request,
+      const fetchOptions = createFetchOptions(request);
+      await api.DELETE("/users/{id}", {
+        params: { path: { id: Number(userId) } },
+        headers: fetchOptions.headers,
+        credentials: fetchOptions.credentials
       });
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 403) {
-        return { error: "You can only delete your own account" };
+      try {
+        handleApiError(error, `/users/${userId}`);
+      } catch (apiError) {
+        if (apiError instanceof Error && (apiError as any).status === 403) {
+          return { error: "You can only delete your own account" };
+        }
+        throw apiError;
       }
-      throw error; // 重新抛出其他错误
     }
   }
 

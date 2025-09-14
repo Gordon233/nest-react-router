@@ -1,20 +1,24 @@
 import { Link, useLoaderData, redirect } from "react-router";
 import type { Route } from "./+types/home";
-import { api } from "~/lib/api";
+import { api, createFetchOptions } from "~/lib/api";
 import { Button } from "~/components/ui/button";
-import type { components } from "~/types/api";
-
-type UserResponse = components["schemas"]["UserResponseDto"];
 
 // 尝试获取当前用户，但不强制登录
 export async function loader({ request }: { request: Request }) {
   try {
-    const response = await api.request<UserResponse>("/auth/me", { request });
-    return { user: response.data, isAuthenticated: true };
+    const fetchOptions = createFetchOptions(request);
+    const { data } = await api.GET("/auth/me", {
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
+    });
+
+    console.log('[HOME] User authenticated', data);
+    return { user: data, isAuthenticated: true };
   } catch (error) {
     // 未登录也没关系，显示公开页面
     // 注意：如果是 redirect，需要重新抛出
-    if (error instanceof Error && (error as any).status === 401) {
+    if (error && (error as any).response?.status === 401) {
+      console.log('[HOME] User not authenticated, showing public page');
       return { user: null, isAuthenticated: false };
     }
     throw error; // 重新抛出其他错误

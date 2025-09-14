@@ -1,20 +1,27 @@
 import { useLoaderData, Link, Form, redirect } from "react-router";
 import type { Route } from "./+types/users.$id";
-import { api } from "~/lib/api";
+import { api, createFetchOptions, handleApiError } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import type { components } from "~/types/api";
 
 type UserResponse = components["schemas"]["UserResponseDto"];
 
 export async function loader({ params, request }: Route.LoaderArgs) {
-  const userId = params.id;
+  const userId = Number(params.id);
 
-  // 401 会自动重定向到 /login，404 会抛出 data()
-  const response = await api.request<UserResponse>(`/users/${userId}` as any, {
-    request,
-  });
+  try {
+    const fetchOptions = createFetchOptions(request);
+    const { data } = await api.GET("/users/{id}", {
+      params: { path: { id: userId } },
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
+    });
 
-  return { user: response.data };
+    console.log('[USER_DETAIL] User loaded successfully', data);
+    return { user: data };
+  } catch (error) {
+    handleApiError(error, `/users/${userId}`);
+  }
 }
 
 export default function UserDetail() {

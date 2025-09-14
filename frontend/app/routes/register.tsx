@@ -1,6 +1,6 @@
 import { Form, redirect, useActionData } from "react-router";
 import type { Route } from "./+types/register";
-import { api } from "~/lib/api";
+import { api, createFetchOptions, handleApiError } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { components } from "~/types/api";
@@ -21,27 +21,33 @@ export async function action({ request }: Route.ActionArgs) {
   };
 
   try {
-    await api.request("/auth/register", {
-      method: "post",
+    const fetchOptions = createFetchOptions(request);
+    const { data } = await api.POST("/auth/register", {
       body: userData,
-      request,
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
     });
 
+    console.log('[REGISTER] Registration successful', data);
     // 注册成功，跳转到登录页
     return redirect("/login");
   } catch (error) {
-    if (error instanceof Error && (error as any).response) {
-      const response = (error as any).response;
-      // 处理具体错误（如邮箱已存在）
-      if (response.status === 409) {
-        return { error: "Email already exists", data: userData };
+    try {
+      handleApiError(error, "/auth/register");
+    } catch (apiError) {
+      if (apiError instanceof Error && (apiError as any).response) {
+        const response = (apiError as any).response;
+        // 处理具体错误（如邮箱已存在）
+        if (response.status === 409) {
+          return { error: "Email already exists", data: userData };
+        }
+        return {
+          error: response.data?.message || "Registration failed",
+          data: userData
+        };
       }
-      return {
-        error: response.data?.message || "Registration failed",
-        data: userData
-      };
+      throw apiError; // 重新抛出其他错误
     }
-    throw error; // 重新抛出其他错误
   }
 }
 

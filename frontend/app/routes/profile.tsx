@@ -1,22 +1,26 @@
 import { Form, redirect, useLoaderData, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/profile";
-import { api } from "~/lib/api";
+import { api, createFetchOptions, handleApiError } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { components } from "~/types/api";
 
-type UserResponse = components["schemas"]["UserResponseDto"];
 type UpdateUserDto = components["schemas"]["UpdateUserDto"];
 
 // 获取当前用户信息
 export async function loader({ request }: Route.LoaderArgs) {
-  // 🔑 关键改动：传递 request 对象以转发 cookies
-  // 401 会自动重定向到 /login
-  const response = await api.request<UserResponse>("/auth/me", {
-    request, // 传递原始请求对象，包含 cookies
-  });
+  try {
+    const fetchOptions = createFetchOptions(request);
+    const { data } = await api.GET("/auth/me", {
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
+    });
 
-  return { user: response.data };
+    console.log('[PROFILE] User profile loaded successfully', data);
+    return { user: data };
+  } catch (error) {
+    handleApiError(error, "/auth/me");
+  }
 }
 
 // 处理更新操作
@@ -25,10 +29,11 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = formData.get("intent");
 
   // 获取当前用户信息 (401 会自动重定向)
-  const currentUserResponse = await api.request<UserResponse>("/auth/me", {
-    request, // 🔑 传递 request 对象以转发 cookies
+  const fetchOptions = createFetchOptions(request);
+  const { data: currentUser } = await api.GET("/auth/me", {
+    headers: fetchOptions.headers,
+    credentials: fetchOptions.credentials
   });
-  const currentUser = currentUserResponse.data;
   
   if (intent === "update") {
     const updateData: UpdateUserDto = {
@@ -39,42 +44,47 @@ export async function action({ request }: Route.ActionArgs) {
     };
     
     try {
-      const updateResponse = await api.request(`/users/${currentUser.id}` as any, {
-        method: "patch",
+      const { response } = await api.PATCH("/users/{id}", {
+        params: { path: { id: currentUser!.id } },
         body: updateData,
-        request,
+        headers: fetchOptions.headers,
+        credentials: fetchOptions.credentials
       });
 
       return {
         success: "Profile updated successfully",
         // 可以访问额外信息，如更新时间戳
-        lastModified: updateResponse.headers['last-modified']
+        lastModified: response.headers.get('last-modified')
       };
     } catch (error) {
-      if (error instanceof Error && (error as any).response) {
-        const response = (error as any).response;
-        // 自定义错误处理，可以访问详细错误信息
-        return {
-          error: response.data?.message || "Failed to update profile",
-          validationErrors: response.data?.errors // 可能的字段验证错误
-        };
+      try {
+        handleApiError(error, `/users/${currentUser!.id}`);
+      } catch (apiError) {
+        if (apiError instanceof Error && (apiError as any).response) {
+          const response = (apiError as any).response;
+          // 自定义错误处理，可以访问详细错误信息
+          return {
+            error: response.data?.message || "Failed to update profile",
+            validationErrors: response.data?.errors // 可能的字段验证错误
+          };
+        }
+        throw apiError; // 重新抛出 redirect 或其他异常
       }
-      throw error; // 重新抛出 redirect 或其他异常
     }
   }
   
   if (intent === "logout") {
-    await api.request("/auth/logout", {
-      method: "post",
-      request,
+    await api.POST("/auth/logout", {
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
     });
     return redirect("/login");
   }
   
   if (intent === "logout-all") {
-    await api.request("/auth/logout-all-devices", {
-      method: "post",
-      request,
+    await api.POST("/auth/logout-all-devices", {
+      headers: fetchOptions.headers,
+      credentials: fetchOptions.credentials
     });
     return redirect("/login");
   }
@@ -83,7 +93,23 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Profile() {
-  const { user } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const user = loaderData?.user;
+
+  if (!user) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-red-800 mb-2">
+            Unable to load profile
+          </h2>
+          <p className="text-red-600">
+            Please try refreshing the page or log in again.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
