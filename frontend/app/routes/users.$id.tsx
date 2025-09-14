@@ -9,19 +9,10 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 export async function loader({ params, request }: Route.LoaderArgs) {
   const userId = params.id;
 
+  // 401 会自动重定向到 /login，404 会抛出 data()
   const response = await api.request<UserResponse>(`/users/${userId}` as any, {
     request,
   });
-
-  if (response.error) {
-    if (response.status === 401) {
-      throw redirect("/login");
-    }
-    if (response.status === 404) {
-      throw new Response("User not found", { status: 404 });
-    }
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
-  }
 
   return { user: response.data };
 }

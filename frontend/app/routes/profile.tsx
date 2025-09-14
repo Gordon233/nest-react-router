@@ -10,24 +10,13 @@ type UpdateUserDto = components["schemas"]["UpdateUserDto"];
 
 // 获取当前用户信息
 export async function loader({ request }: Route.LoaderArgs) {
-  try {
-    
-    // 🔑 关键改动：传递 request 对象以转发 cookies
-    const response = await api.request<UserResponse>("/auth/me", {
-      request, // 传递原始请求对象，包含 cookies
-    });
+  // 🔑 关键改动：传递 request 对象以转发 cookies
+  // 401 会自动重定向到 /login
+  const response = await api.request<UserResponse>("/auth/me", {
+    request, // 传递原始请求对象，包含 cookies
+  });
 
-    if (response.error) {
-      if (response.status === 401) {
-        throw redirect("/login");
-      }
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    return { user: response.data };
-  } catch (error) {
-    throw error;
-  }
+  return { user: response.data };
 }
 
 // 处理更新操作
@@ -35,19 +24,10 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
-  // 获取当前用户信息
-  
+  // 获取当前用户信息 (401 会自动重定向)
   const currentUserResponse = await api.request<UserResponse>("/auth/me", {
     request, // 🔑 传递 request 对象以转发 cookies
   });
-
-  if (currentUserResponse.error) {
-    if (currentUserResponse.status === 401) {
-      throw redirect("/login");
-    }
-    throw new Error(`API Error: ${currentUserResponse.status} ${currentUserResponse.statusText}`);
-  }
-
   const currentUser = currentUserResponse.data;
   
   if (intent === "update") {
@@ -58,17 +38,29 @@ export async function action({ request }: Route.ActionArgs) {
       gender: formData.get("gender") as "male" | "female" | "other" | undefined,
     };
     
-    const updateResponse = await api.request(`/users/${currentUser.id}` as any, {
-      method: "patch",
-      body: updateData,
-      request,
-    });
+    try {
+      const updateResponse = await api.request(`/users/${currentUser.id}` as any, {
+        method: "patch",
+        body: updateData,
+        request,
+      });
 
-    if (updateResponse.error) {
-      return { error: updateResponse.data?.message || "Failed to update profile" };
+      return {
+        success: "Profile updated successfully",
+        // 可以访问额外信息，如更新时间戳
+        lastModified: updateResponse.headers['last-modified']
+      };
+    } catch (error) {
+      if (error instanceof Error && (error as any).response) {
+        const response = (error as any).response;
+        // 自定义错误处理，可以访问详细错误信息
+        return {
+          error: response.data?.message || "Failed to update profile",
+          validationErrors: response.data?.errors // 可能的字段验证错误
+        };
+      }
+      throw error; // 重新抛出 redirect 或其他异常
     }
-
-    return { success: "Profile updated successfully" };
   }
   
   if (intent === "logout") {

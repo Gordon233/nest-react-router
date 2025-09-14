@@ -8,14 +8,17 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 
 // 尝试获取当前用户，但不强制登录
 export async function loader({ request }: { request: Request }) {
-  const response = await api.request<UserResponse>("/auth/me", { request });
-
-  if (response.error) {
+  try {
+    const response = await api.request<UserResponse>("/auth/me", { request });
+    return { user: response.data, isAuthenticated: true };
+  } catch (error) {
     // 未登录也没关系，显示公开页面
-    return { user: null, isAuthenticated: false };
+    // 注意：如果是 redirect，需要重新抛出
+    if (error instanceof Error && (error as any).status === 401) {
+      return { user: null, isAuthenticated: false };
+    }
+    throw error; // 重新抛出其他错误
   }
-
-  return { user: response.data, isAuthenticated: true };
 }
 
 export function meta({}: Route.MetaArgs) {

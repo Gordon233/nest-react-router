@@ -11,22 +11,13 @@ export async function action({ request }: Route.ActionArgs) {
   const password = formData.get("password") as string;
 
   try {
-    
     const loginResponse = await api.request("/auth/login", {
       method: "post",
       body: { email, password },
       request,
     });
 
-    // 处理错误响应
-    if (loginResponse.error) {
-      return {
-        error: loginResponse.data?.message || "Invalid credentials",
-        email,
-      };
-    }
-
-    // 🔑 提取 set-cookie header
+    // ✅ 成功：可以访问响应头
     const setCookieHeader = loginResponse.headers['set-cookie'];
 
     if (setCookieHeader) {
@@ -39,11 +30,17 @@ export async function action({ request }: Route.ActionArgs) {
       return redirect("/users");
     }
   } catch (error) {
-    console.error("Login error:", error);
-    return {
-      error: "An unexpected error occurred",
-      email,
-    };
+    // ✅ 错误：可以访问完整响应信息
+    if (error instanceof Error && (error as any).response) {
+      const response = (error as any).response;
+      return {
+        error: response.data?.message || "Invalid credentials",
+        email
+      };
+    }
+
+    // 其他类型的错误（如 redirect）重新抛出
+    throw error;
   }
 }
 

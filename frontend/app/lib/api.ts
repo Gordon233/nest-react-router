@@ -1,3 +1,4 @@
+import { redirect, data } from 'react-router';
 import type { paths } from '~/types/api';
 
 type ApiPath = keyof paths;
@@ -8,30 +9,18 @@ interface ApiResponse<T = any> {
   headers: Record<string, string>;
   status: number;
   statusText: string;
-  error?: boolean;
-}
-
-class ApiError extends Error {
-  constructor(
-    public status: number,
-    public statusText: string,
-    public data?: any
-  ) {
-    super(`API Error: ${status} ${statusText}`);
-  }
 }
 
 class ApiClient {
   private baseUrl = 'http://localhost:3000';
 
 
-  private buildResponse<T>(res: Response, data: T, error = false): ApiResponse<T> {
+  private buildResponse<T>(res: Response, data: T): ApiResponse<T> {
     return {
       data,
       headers: Object.fromEntries(res.headers.entries()),
       status: res.status,
-      statusText: res.statusText,
-      ...(error && { error: true })
+      statusText: res.statusText
     };
   }
 
@@ -95,17 +84,47 @@ class ApiClient {
 
     const res = await fetch(url.toString(), fetchConfig);
 
+    console.log(`[API] Received response from ${path} - Status: ${res.status}`);
 
+    // Handle errors by throwing exceptions (React Router v7 standard)
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
-      return this.buildResponse(res, errorData, true);
+
+      // Automatic redirect on 401 Unauthorized
+      if (res.status === 401) {
+        console.log(`[API] 401 Unauthorized - redirecting to login`);
+        throw redirect("/login");
+      }
+
+      // Return 404 with data() for proper error boundary handling
+      if (res.status === 404) {
+        console.log(`[API] 404 Not Found`);
+        throw data("Not Found", { status: 404 });
+      }
+
+      // Create enhanced error with response information
+      const error = new Error(errorData?.message || `API Error: ${res.status} ${res.statusText}`);
+      const responseInfo = {
+        data: errorData,
+        headers: Object.fromEntries(res.headers.entries()),
+        status: res.status,
+        statusText: res.statusText
+      };
+      (error as any).response = responseInfo;
+      (error as any).status = res.status;
+      (error as any).statusText = res.statusText;
+
+      console.log(`[API] Throwing error for ${path}:`, error.message);
+      throw error;
     }
 
+    // Handle 204 No Content
     if (res.status === 204) {
       console.log(`[API] No content response from ${path}`);
       return this.buildResponse(res, undefined as T);
     }
 
+    // Success: return complete response
     const responseData = await res.json();
     console.log(`[API] Successfully received response from ${path}`, responseData);
     return this.buildResponse(res, responseData);
@@ -113,4 +132,3 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-export { ApiError };

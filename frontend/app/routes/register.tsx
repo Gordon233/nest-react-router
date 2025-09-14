@@ -20,25 +20,29 @@ export async function action({ request }: Route.ActionArgs) {
     gender: formData.get("gender") as "male" | "female" | "other" | undefined,
   };
 
-  const response = await api.request("/auth/register", {
-    method: "post",
-    body: userData,
-    request,
-  });
+  try {
+    await api.request("/auth/register", {
+      method: "post",
+      body: userData,
+      request,
+    });
 
-  if (response.error) {
-    // 处理具体错误（如邮箱已存在）
-    if (response.status === 409) {
-      return { error: "Email already exists", data: userData };
+    // 注册成功，跳转到登录页
+    return redirect("/login");
+  } catch (error) {
+    if (error instanceof Error && (error as any).response) {
+      const response = (error as any).response;
+      // 处理具体错误（如邮箱已存在）
+      if (response.status === 409) {
+        return { error: "Email already exists", data: userData };
+      }
+      return {
+        error: response.data?.message || "Registration failed",
+        data: userData
+      };
     }
-    return {
-      error: response.data?.message || "Registration failed",
-      data: userData
-    };
+    throw error; // 重新抛出其他错误
   }
-
-  // 注册成功，跳转到登录页
-  return redirect("/login");
 }
 
 export default function Register() {

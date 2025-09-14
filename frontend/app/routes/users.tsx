@@ -1,4 +1,4 @@
-import { Link, useLoaderData, Form, redirect } from "react-router";
+import { Link, useLoaderData, Form } from "react-router";
 import type { Route } from "./+types/users";
 import { api } from "~/lib/api";
 import { Button } from "~/components/ui/button";
@@ -8,24 +8,13 @@ type UserResponse = components["schemas"]["UserResponseDto"];
 
 // loader 在组件渲染前获取数据
 export async function loader({ request }: Route.LoaderArgs) {
-  try {
-    
-    // 🔑 关键改动：传递 request 对象以转发 cookies
-    const response = await api.request<UserResponse[]>("/users", {
-      request, // 传递原始请求对象，包含 cookies
-    });
+  // 🔑 关键改动：传递 request 对象以转发 cookies
+  // 401 会自动重定向到 /login，其他错误会被 ErrorBoundary 处理
+  const response = await api.request<UserResponse[]>("/users", {
+    request, // 传递原始请求对象，包含 cookies
+  });
 
-    if (response.error) {
-      if (response.status === 401) {
-        throw redirect("/login");
-      }
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    return { users: response.data };
-  } catch (error) {
-    throw error;
-  }
+  return { users: response.data };
 }
 
 // action 处理用户操作（如删除）
@@ -35,16 +24,16 @@ export async function action({ request }: Route.ActionArgs) {
   const userId = formData.get("userId");
 
   if (intent === "delete" && userId) {
-    const response = await api.request(`/users/${userId}` as any, {
-      method: "delete",
-      request,
-    });
-
-    if (response.error) {
-      if (response.status === 403) {
+    try {
+      await api.request(`/users/${userId}` as any, {
+        method: "delete",
+        request,
+      });
+    } catch (error) {
+      if (error instanceof Error && (error as any).status === 403) {
         return { error: "You can only delete your own account" };
       }
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      throw error; // 重新抛出其他错误
     }
   }
 
